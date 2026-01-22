@@ -1,4 +1,4 @@
-const map = L.map("map", { scrollWheelZoom: false }).setView([20, 0], 2);
+const map = L.map("map", { scrollWheelZoom: true }).setView([20, 0], 2);
 
 L.tileLayer(
   "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
