@@ -1,6 +1,7 @@
 import json
 import gzip
 from pathlib import Path
+
 import pandas as pd
 
 IN_JSON = Path("data/lighthousedata.json")
@@ -20,12 +21,11 @@ def is_light_feature(tags: dict) -> bool:
 
 
 def pick_colour(tags: dict) -> str:
-    c = (
+    return str(
         tags.get("seamark:light:1:colour")
         or tags.get("seamark:light:colour")
         or ""
-    )
-    return str(c).lower()
+    ).lower()
 
 
 def pick_sequence(tags: dict) -> str:
@@ -51,11 +51,12 @@ def make_key(osm_type: str, osm_id: int) -> str:
 def main():
     raw = IN_JSON.read_text(encoding="utf-8").strip()
     if not raw:
-        raise RuntimeError("lighthousedata.json is empty")
+        raise RuntimeError("data/lighthousedata.json is empty")
 
     data = json.loads(raw)
     elements = data.get("elements", [])
 
+    # Build node index for way centroid calc
     node_xy: dict[int, tuple[float, float]] = {}
     for el in elements:
         if el.get("type") == "node" and "lat" in el and "lon" in el:
@@ -106,7 +107,7 @@ def main():
                 "osm_id": oid,
                 "lat": lat,
                 "lon": lon,
-                "name": pick_name(tags, f"Lighthouse {osm_id}"),
+                "name": pick_name(tags, f"Lighthouse {oid}"),
                 "color": pick_colour(tags),
                 "sequence": pick_sequence(tags),
             }
@@ -130,7 +131,7 @@ def main():
         f.write(payload)
 
     print(f"Rows written: {len(df)}")
-    print(df["osm_type"].value_counts(dropna=False).to_string())
+    print(df["osm_type"].value_counts().to_string())
 
 
 if __name__ == "__main__":

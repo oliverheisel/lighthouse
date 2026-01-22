@@ -45,7 +45,9 @@ loadJson("data.min.json")
       const col = colorHex(p.color);
       const name = p.name || "Unnamed";
       const seq = p.sequence || "";
-      const key = p.key || (p.osm_type && p.osm_id ? (p.osm_type[0] + p.osm_id) : "");
+      const key = p.key ||
+      (p.osm_type && (p.osm_id ?? p.id) ? (p.osm_type[0] + (p.osm_id ?? p.id)) : "") ||
+      (p.type && p.id ? (p.type[0] + p.id) : "");
 
       const popup = `
         <div class="popup">
