@@ -19,10 +19,21 @@ jobs:
 
       - name: Download Overpass data
         run: |
+          set -euo pipefail
           mkdir -p data
-          curl -fL --retry 12 --retry-all-errors --retry-delay 10 \
-            -o data/lighthousedata.json \
-            "https://overpass.kumi.systems/api/interpreter?data=%0A%5Bout%3Ajson%5D%5Btimeout%3A600%5D%3B%28node%5B%22seamark%3Alight%3Asequence%22%5D%28-90%2C-180%2C90%2C180%29%3Bnode%5B%22seamark%3Alight%3A1%3Asequence%22%5D%28-90%2C-180%2C90%2C180%29%3Bway%5B%22seamark%3Alight%3Asequence%22%5D%28-90%2C-180%2C90%2C180%29%3Bway%5B%22seamark%3Alight%3A1%3Asequence%22%5D%28-90%2C-180%2C90%2C180%29%3B%29%3Bout%20body%3B%3E%3Bout%20skel%20qt%3B%0A"
+      
+          wget -O data/lighthousedata.json \
+            "https://www.overpass-api.de/api/interpreter?data=%0A%09%09%09%5Bout%3Ajson%5D%5Btimeout%3A300%5D%3B%0A%09%09%09(%0A%09%09%09%20%20node%5B%22seamark%3Alight%3Asequence%22%5D(-90%2C-180%2C90%2C180)%3B%0A%09%09%09%20%20node%5B%22seamark%3Alight%3A1%3Asequence%22%5D(-90%2C-180%2C90%2C180)%3B%0A%09%09%09%20%20way%5B%22seamark%3Alight%3Asequence%22%5D(-90%2C-180%2C90%2C180)%3B%0A%09%09%09%20%20way%5B%22seamark%3Alight%3A1%3Asequence%22%5D(-90%2C-180%2C90%2C180)%3B%0A%09%09%09)%3B%0A%09%09%09out%20body%3B%0A%09%09%09%3E%3B%0A%09%09%09out%20skel%20qt%3B%0A%09%09"
+      
+          # --- VALIDATION ---
+          test -s data/lighthousedata.json
+      
+          FIRST_CHAR="$(head -c 1 data/lighthousedata.json)"
+          if [ "$FIRST_CHAR" != "{" ]; then
+            echo "Overpass returned non-JSON:"
+            head -c 300 data/lighthousedata.json
+            exit 1
+          fi
 
       - name: Install python dependencies
         run: |
