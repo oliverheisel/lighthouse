@@ -1,5 +1,7 @@
+const baseUrl = "http://lighthouse.local:8501";
+
 const map = L.map("map", {
-  scrollWheelZoom: false
+  scrollWheelZoom: true
 }).setView([20, 0], 2);
 
 L.tileLayer(
@@ -21,23 +23,32 @@ function colorHex(c) {
 }
 
 async function loadData() {
-  const resp = await fetch("data.min.json.gz");
-  const blob = await resp.blob();
-  const ds = new DecompressionStream("gzip");
-  const decompressed = blob.stream().pipeThrough(ds);
-  const text = await new Response(decompressed).text();
-  return JSON.parse(text);
+  const resp = await fetch("data.min.json", { cache: "no-store" });
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status} while loading data.min.json`);
+  }
+  return await resp.json();
 }
 
 loadData()
   .then(points => {
     for (const p of points) {
       const col = colorHex(p.color);
+      const link = `${baseUrl}/?id=${p.id}`;
+
+      const title = `${p.name} | ${p.id}`;
+      const seq = p.sequence || "";
 
       const popup = `
         <div class="popup">
-          <div><b>${p.name}</b></div>
-          <div>${p.sequence || ""}</div>
+          <div class="title">${title}</div>
+          <div class="row">Seq: ${seq}</div>
+          <div class="row">
+            Link:
+            <a href="${link}" target="_blank" rel="noopener">
+              ${link}
+            </a>
+          </div>
         </div>
       `;
 
@@ -55,5 +66,5 @@ loadData()
   })
   .catch(err => {
     console.error(err);
-    alert("Failed to load lighthouse data");
+    alert(`Failed to load lighthouse data: ${err.message}`);
   });
