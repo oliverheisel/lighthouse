@@ -1,0 +1,42 @@
+name: Update data
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 0 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download Overpass data
+        run: |
+          mkdir -p data
+          curl -fL --retry 12 --retry-all-errors --retry-delay 10 \
+            -o data/lighthousedata.json \
+            "https://overpass.kumi.systems/api/interpreter?data=%0A%5Bout%3Ajson%5D%5Btimeout%3A600%5D%3B%28node%5B%22seamark%3Alight%3Asequence%22%5D%28-90%2C-180%2C90%2C180%29%3Bnode%5B%22seamark%3Alight%3A1%3Asequence%22%5D%28-90%2C-180%2C90%2C180%29%3Bway%5B%22seamark%3Alight%3Asequence%22%5D%28-90%2C-180%2C90%2C180%29%3Bway%5B%22seamark%3Alight%3A1%3Asequence%22%5D%28-90%2C-180%2C90%2C180%29%3B%29%3Bout%20body%3B%3E%3Bout%20skel%20qt%3B%0A"
+
+      - name: Install python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas pyarrow
+
+      - name: Build parquet and site dataset
+        run: |
+          python server/scripts/build_dataset.py
+
+      - name: Commit data
+        run: |
+          git config --global user.name "oliverheisel"
+          git config --global user.email "oliver@heisel.one"
+          git add data/lighthouses.parquet server/site/data.min.json.gz
+          git commit -m "Update lighthouse dataset" || echo "No changes"
+          git push
