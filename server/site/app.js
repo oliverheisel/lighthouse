@@ -43,7 +43,22 @@ loadJson("data.min.json")
   .then(points => {
     for (const p of points) {
       const col = colorHex(p.color);
-      const popup = `<b>${p.name}</b><br>${p.sequence || ""}`;
+      const name = p.name || "Unnamed";
+      const seq = p.sequence || "";
+
+      const popup = `
+        <div class="popup">
+          <div><b>${name}</b> | <span>${p.id}</span></div>
+          <div>Seq: ${seq}</div>
+          <div>
+            Link:
+            <a href="http://lighthouse.local:8501/?id=${p.id}" target="_blank" rel="noopener noreferrer">
+              http://lighthouse.local:8501/?id=${p.id}
+            </a>
+          </div>
+        </div>
+      `;
+
 
       L.circleMarker([p.lat, p.lon], {
         radius: 5,
