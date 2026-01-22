@@ -1,15 +1,8 @@
-const baseUrl = "http://lighthouse.local:8501";
-
-const map = L.map("map", {
-  scrollWheelZoom: true
-}).setView([20, 0], 2);
+const map = L.map("map", { scrollWheelZoom: false }).setView([20, 0], 2);
 
 L.tileLayer(
   "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  {
-    maxZoom: 20,
-    attribution: "© OpenStreetMap © CARTO"
-  }
+  { maxZoom: 20, attribution: "© OpenStreetMap © CARTO" }
 ).addTo(map);
 
 function colorHex(c) {
@@ -34,21 +27,11 @@ loadData()
   .then(points => {
     for (const p of points) {
       const col = colorHex(p.color);
-      const link = `${baseUrl}/?id=${p.id}`;
-
-      const title = `${p.name} | ${p.id}`;
-      const seq = p.sequence || "";
 
       const popup = `
         <div class="popup">
-          <div class="title">${title}</div>
-          <div class="row">Seq: ${seq}</div>
-          <div class="row">
-            Link:
-            <a href="${link}" target="_blank" rel="noopener">
-              ${link}
-            </a>
-          </div>
+          <div><b>${p.name}</b></div>
+          <div>${p.sequence || ""}</div>
         </div>
       `;
 
