@@ -50,7 +50,7 @@ map.addControl(new LinkControl());
 function getBaseUrl() {
   const el = document.getElementById("linkBaseInput");
   if (!el || !el.value) return "";
-  return el.value.replace(/\/+$/, "");
+  return el.value.trim().replace(/\/+$/, "");
 }
 
 function colorHex(c) {
@@ -86,40 +86,46 @@ async function loadJson(filename) {
   }
 }
 
+function makeKey(p) {
+  return (
+    p.key ||
+    (p.osm_type && (p.osm_id ?? p.id) ? p.osm_type[0] + (p.osm_id ?? p.id) : "") ||
+    (p.type && p.id ? p.type[0] + p.id : "")
+  );
+}
+
+function popupHtml(name, key, seq) {
+  const base = getBaseUrl();
+  const url = base ? `${base}/?id=${key}` : `?id=${key}`;
+
+  return `
+    <div class="popup">
+      <div><b>${name}</b> | <span>${key}</span></div>
+      <div>Seq: ${seq}</div>
+      <div>
+        Link:
+        <a href="${url}" target="_blank" rel="noopener noreferrer">
+          ${url}
+        </a>
+      </div>
+    </div>
+  `;
+}
+
 /* ------------------------------
    Load & render points
 -------------------------------- */
 loadJson("data.min.json")
   .then(points => {
     for (const p of points) {
+      if (typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+
       const col = colorHex(p.color);
       const name = p.name || "Unnamed";
       const seq = p.sequence || "";
+      const key = makeKey(p);
 
-      const key =
-        p.key ||
-        (p.osm_type && (p.osm_id ?? p.id)
-          ? p.osm_type[0] + (p.osm_id ?? p.id)
-          : "") ||
-        (p.type && p.id ? p.type[0] + p.id : "");
-
-      const base = getBaseUrl();
-      const url = base ? `${base}/?id=${key}` : `?id=${key}`;
-
-      const popup = `
-        <div class="popup">
-          <div><b>${name}</b> | <span>${key}</span></div>
-          <div>Seq: ${seq}</div>
-          <div>
-            Link:
-            <a href="${url}" target="_blank" rel="noopener noreferrer">
-              ${url}
-            </a>
-          </div>
-        </div>
-      `;
-
-      L.circleMarker([p.lat, p.lon], {
+      const marker = L.circleMarker([p.lat, p.lon], {
         radius: 5,
         color: col,
         fillColor: col,
@@ -127,8 +133,15 @@ loadJson("data.min.json")
         weight: 1
       })
         .bindTooltip(name, { sticky: true })
-        .bindPopup(popup)
         .addTo(map);
+
+      // Create an empty popup first
+      marker.bindPopup("");
+
+      // Rebuild popup HTML each time it opens (so URL always matches input)
+      marker.on("popupopen", () => {
+        marker.setPopupContent(popupHtml(name, key, seq));
+      });
     }
   })
   .catch(err => {
