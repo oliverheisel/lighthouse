@@ -25,7 +25,7 @@ const LinkControl = L.Control.extend({
         <input
           id="linkBaseInput"
           type="text"
-          value="http://lighthouse.local:8501"
+          value="http://lighthouse.local:8501/lighthouse"
           style="
             width: 220px;
             font-size: 12px;
