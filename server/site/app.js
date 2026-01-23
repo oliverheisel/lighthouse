@@ -5,6 +5,54 @@ L.tileLayer(
   { maxZoom: 20, attribution: "© OpenStreetMap © CARTO" }
 ).addTo(map);
 
+/* ------------------------------
+   Link base selector (bottom-left)
+-------------------------------- */
+const LinkControl = L.Control.extend({
+  options: { position: "bottomleft" },
+
+  onAdd: function () {
+    const div = L.DomUtil.create("div", "link-control");
+    div.innerHTML = `
+      <div style="
+        background: rgba(0,0,0,0.75);
+        color: white;
+        padding: 6px 8px;
+        font-size: 12px;
+        border-radius: 4px;
+      ">
+        <div style="margin-bottom:4px;">Detail base URL</div>
+        <input
+          id="linkBaseInput"
+          type="text"
+          value="http://lighthouse.local:8501"
+          style="
+            width: 220px;
+            font-size: 12px;
+            padding: 3px;
+          "
+        />
+      </div>
+    `;
+
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+
+    return div;
+  }
+});
+
+map.addControl(new LinkControl());
+
+/* ------------------------------
+   Helpers
+-------------------------------- */
+function getBaseUrl() {
+  const el = document.getElementById("linkBaseInput");
+  if (!el || !el.value) return "";
+  return el.value.replace(/\/+$/, "");
+}
+
 function colorHex(c) {
   const v = (c || "").toLowerCase();
   if (v === "red") return "#ff4b4b";
@@ -16,7 +64,6 @@ function colorHex(c) {
 }
 
 function basePath() {
-  // makes sure we always have the directory of index.html
   let p = window.location.pathname;
   if (!p.endsWith("/")) p = p.substring(0, p.lastIndexOf("/") + 1);
   return p;
@@ -39,15 +86,25 @@ async function loadJson(filename) {
   }
 }
 
+/* ------------------------------
+   Load & render points
+-------------------------------- */
 loadJson("data.min.json")
   .then(points => {
     for (const p of points) {
       const col = colorHex(p.color);
       const name = p.name || "Unnamed";
       const seq = p.sequence || "";
-      const key = p.key ||
-      (p.osm_type && (p.osm_id ?? p.id) ? (p.osm_type[0] + (p.osm_id ?? p.id)) : "") ||
-      (p.type && p.id ? (p.type[0] + p.id) : "");
+
+      const key =
+        p.key ||
+        (p.osm_type && (p.osm_id ?? p.id)
+          ? p.osm_type[0] + (p.osm_id ?? p.id)
+          : "") ||
+        (p.type && p.id ? p.type[0] + p.id : "");
+
+      const base = getBaseUrl();
+      const url = base ? `${base}/?id=${key}` : `?id=${key}`;
 
       const popup = `
         <div class="popup">
@@ -55,13 +112,12 @@ loadJson("data.min.json")
           <div>Seq: ${seq}</div>
           <div>
             Link:
-            <a href="http://lighthouse.local:8501/?id=${key}" target="_blank" rel="noopener noreferrer">
-              http://lighthouse.local:8501/?id=${key}
+            <a href="${url}" target="_blank" rel="noopener noreferrer">
+              ${url}
             </a>
           </div>
         </div>
       `;
-
 
       L.circleMarker([p.lat, p.lon], {
         radius: 5,
@@ -70,7 +126,7 @@ loadJson("data.min.json")
         fillOpacity: 0.95,
         weight: 1
       })
-        .bindTooltip(p.name, { sticky: true })
+        .bindTooltip(name, { sticky: true })
         .bindPopup(popup)
         .addTo(map);
     }
