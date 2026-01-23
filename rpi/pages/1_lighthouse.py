@@ -16,6 +16,9 @@ MAP_POINTS_FILE = REPO_ROOT / "server" / "site" / "data.min.json"
 RPI_APP_JS = REPO_ROOT / "rpi" / "app.js"
 DETAILS_FILE = REPO_ROOT / "data" / "lighthousedata.json"
 
+# Command file read by your root LED controller (led_controller.py)
+CMD_PATH = Path("/tmp/lighthouse_cmd.json")
+
 @st.cache_data
 def load_json(path: Path):
     with open(path, "r", encoding="utf-8") as f:
@@ -142,6 +145,18 @@ def main_light_fields(tags: dict) -> dict:
         "main_character": character,
     }
 
+def pick_period_seconds(tags: dict) -> float:
+    """
+    Best-effort: take the main light's period and return seconds.
+    Falls back to 3.0 if missing or not parseable.
+    """
+    ml = main_light_fields(tags)
+    try:
+        s = str(ml.get("main_frequency", "")).replace("s", "").strip()
+        return float(s) if s else 3.0
+    except Exception:
+        return 3.0
+
 missing = [str(p) for p in (MAP_POINTS_FILE, RPI_APP_JS, DETAILS_FILE) if not p.exists()]
 if missing:
     st.error("Missing required file(s):")
@@ -260,6 +275,35 @@ with right:
             st.dataframe(sectors, width="stretch", hide_index=True)
         else:
             st.caption("No sector data found in tags.")
+            sectors = []
+
+        # ======================
+        # NEW: LED OUTPUT CONTROLS
+        # ======================
+        st.markdown("#### LED output")
+
+        period_s = pick_period_seconds(tags)
+
+        # Your chosen orange baseline (works well on your hardware)
+        default_rgb = [255, 45, 0]
+
+        brightness = st.slider("Brightness", min_value=10, max_value=255, value=160, step=5)
+        on_fraction = st.slider("On-time fraction", min_value=0.05, max_value=0.80, value=0.18, step=0.01)
+
+        st.caption(f"Period detected: {period_s:.2f} s (from main light period; fallback 3.0 s)")
+
+        if st.button("Play this lighthouse on LEDs", type="primary"):
+            cmd = {
+                "id": selected_id,
+                "period_s": float(period_s),
+                "on_fraction": float(on_fraction),
+                "brightness": int(brightness),
+                "main_colour": (ml.get("main_colour") or "").strip().lower(),
+                "default_rgb": default_rgb,
+                "sectors": sectors,  # list with sector_start/sector_end/colour/character/period/sequence
+            }
+            CMD_PATH.write_text(json.dumps(cmd), encoding="utf-8")
+            st.success("Sent to LED controller.")
 
         with st.expander("Raw JSON (lighthousedata.json)"):
             st.json(details)
@@ -278,4 +322,4 @@ st.divider()
 colA, colB = st.columns([1, 4])
 with colA:
     if st.button("Back to home"):
-        st.switch_page("streamlit_app.py")
+        st.switch_page("streamlitapp.py")
