@@ -6,12 +6,35 @@ L.tileLayer(
 ).addTo(map);
 
 /* ------------------------------
+   URL param helper
+-------------------------------- */
+function getUrlParam(name) {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  } catch (e) {
+    return null;
+  }
+}
+
+function normalizeTargetUrl(raw) {
+  if (!raw) return "";
+  let s = String(raw).trim();
+  // Keep as-is if user wants to enter path too, but ensure no trailing slashes
+  return s.replace(/\/+$/, "");
+}
+
+/* ------------------------------
    Link base selector (bottom-left)
 -------------------------------- */
 const LinkControl = L.Control.extend({
   options: { position: "bottomleft" },
 
   onAdd: function () {
+    const defaultFromParam = normalizeTargetUrl(getUrlParam("url"));
+    const fallbackDefault = "http://lighthouse.local:8501/lighthouse";
+    const defaultBase = defaultFromParam || fallbackDefault;
+
     const div = L.DomUtil.create("div", "link-control");
     div.innerHTML = `
       <div style="
@@ -25,7 +48,7 @@ const LinkControl = L.Control.extend({
         <input
           id="linkBaseInput"
           type="text"
-          value="http://lighthouse.local:8501/lighthouse"
+          value="${defaultBase}"
           style="
             width: 220px;
             font-size: 12px;
@@ -135,10 +158,8 @@ loadJson("data.min.json")
         .bindTooltip(name, { sticky: true })
         .addTo(map);
 
-      // Create an empty popup first
       marker.bindPopup("");
 
-      // Rebuild popup HTML each time it opens (so URL always matches input)
       marker.on("popupopen", () => {
         marker.setPopupContent(popupHtml(name, key, seq));
       });

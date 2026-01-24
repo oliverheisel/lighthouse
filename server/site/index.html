@@ -15,10 +15,43 @@
       height: 100%;
       margin: 0;
     }
+
+    /* Optional: small hint bar */
+    .top-hint {
+      position: absolute;
+      z-index: 1000;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      pointer-events: none;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .top-hint > div {
+      display: inline-block;
+      pointer-events: auto;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .top-hint code {
+      background: rgba(255,255,255,0.12);
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+
+  <!-- Optional: shows how to use the url parameter -->
+  <div class="top-hint">
+    <div>
+      Tip: open with <code>?url=http://lighthouse.local:8501</code> to set the default target.
+    </div>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
