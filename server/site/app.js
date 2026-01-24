@@ -101,9 +101,7 @@ async function loadJson(filename) {
 function normalizeColorName(c) {
   const v = (c || "").toString().trim().toLowerCase();
   if (!v) return "";
-  // keep expected OSM/seamark palette
   if (["red", "green", "white", "yellow", "blue"].includes(v)) return v;
-  // common abbreviations in some datasets
   if (v === "w") return "white";
   if (v === "r") return "red";
   if (v === "g") return "green";
@@ -124,12 +122,12 @@ function sectorColors(p) {
 
 function isMultiColor(p) {
   const set = new Set(sectorColors(p).filter(Boolean));
-  // fallback: if no sectors, not multicolor
   return set.size >= 2;
 }
 
 function pointHasAnyColor(p, wantedSet) {
   if (!wantedSet || wantedSet.size === 0) return true;
+
   const main = normalizeColorName(p.color);
   if (main && wantedSet.has(main)) return true;
 
@@ -166,7 +164,7 @@ function popupHtml(p) {
 }
 
 /* ------------------------------
-   Controls: Filter (top) + Base URL (bottom)
+   Controls: Filters + Base URL
 -------------------------------- */
 const BottomPanelControl = L.Control.extend({
   options: { position: "bottomleft" },
@@ -175,6 +173,14 @@ const BottomPanelControl = L.Control.extend({
     const defaultFromParam = normalizeTargetUrl(getUrlParam("url"));
     const fallbackDefault = "http://lighthouse.local:8501/lighthouse";
     const defaultBase = defaultFromParam || fallbackDefault;
+
+    const colors = [
+      { c: "red", hex: "#ff4b4b" },
+      { c: "green", hex: "#2ecc71" },
+      { c: "white", hex: "#ffffff" },
+      { c: "yellow", hex: "#f1c40f" },
+      { c: "blue", hex: "#4aa3ff" }
+    ];
 
     const div = L.DomUtil.create("div", "bottom-panel");
     div.innerHTML = `
@@ -189,28 +195,30 @@ const BottomPanelControl = L.Control.extend({
 
         <div style="font-weight:600; margin-bottom:6px;">Filters</div>
 
-        <div style="margin-bottom:6px;">
-          <label style="display:block; margin-bottom:3px;">Multicolor</label>
-          <select id="fltMulticolor" style="width:100%; font-size:12px; padding:4px;">
-            <option value="all">All</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
+        <div style="margin-bottom:8px;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="fltMulticolor" />
+            <span>Multicolor only</span>
+          </label>
         </div>
 
         <div style="margin-bottom:10px;">
           <label style="display:block; margin-bottom:3px;">Colors</label>
-          <div style="display:flex; flex-wrap:wrap; gap:6px;">
-            ${["red","green","white","yellow","blue"].map(c => `
-              <label style="display:flex; align-items:center; gap:4px;">
-                <input type="checkbox" class="fltColor" value="${c}" />
-                <span>${c}</span>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            ${colors.map(x => `
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" class="fltColor" value="${x.c}" />
+                <span style="
+                  display:inline-block;
+                  width:10px;
+                  height:10px;
+                  border-radius:50%;
+                  background:${x.hex};
+                  border:1px solid rgba(255,255,255,0.35);
+                "></span>
+                <span style="color:${x.hex}; font-weight:600;">${x.c}</span>
               </label>
             `).join("")}
-          </div>
-          <div style="margin-top:6px; display:flex; gap:6px;">
-            <button id="btnAllColors" style="flex:1; padding:4px; font-size:12px;">All</button>
-            <button id="btnNoColors" style="flex:1; padding:4px; font-size:12px;">None</button>
           </div>
         </div>
 
@@ -253,15 +261,13 @@ function getSelectedColorSet() {
   return set;
 }
 
-function getMulticolorMode() {
+function multicolorOnlyEnabled() {
   const el = document.getElementById("fltMulticolor");
-  return el ? el.value : "all";
+  return !!(el && el.checked);
 }
 
 function pointPassesFilters(p) {
-  const mode = getMulticolorMode();
-  if (mode === "yes" && !isMultiColor(p)) return false;
-  if (mode === "no" && isMultiColor(p)) return false;
+  if (multicolorOnlyEnabled() && !isMultiColor(p)) return false;
 
   const wanted = getSelectedColorSet();
   if (!pointHasAnyColor(p, wanted)) return false;
@@ -286,30 +292,11 @@ function applyFilters() {
 }
 
 function wireFilterUI() {
-  const sel = document.getElementById("fltMulticolor");
-  if (sel) sel.addEventListener("change", applyFilters);
+  const cb = document.getElementById("fltMulticolor");
+  if (cb) cb.addEventListener("change", applyFilters);
 
   const boxes = document.querySelectorAll(".fltColor");
   boxes.forEach(b => b.addEventListener("change", applyFilters));
-
-  const allBtn = document.getElementById("btnAllColors");
-  const noneBtn = document.getElementById("btnNoColors");
-
-  if (allBtn) {
-    allBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      document.querySelectorAll(".fltColor").forEach(b => (b.checked = true));
-      applyFilters();
-    });
-  }
-
-  if (noneBtn) {
-    noneBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      document.querySelectorAll(".fltColor").forEach(b => (b.checked = false));
-      applyFilters();
-    });
-  }
 }
 
 /* ------------------------------
@@ -368,7 +355,6 @@ loadJson("data.rich.json")
       ALL_MARKERS.push({ marker, point: p, key });
       if (key) MARKERS_BY_KEY.set(String(key), marker);
 
-      // add initially (filters applied after wiring)
       marker.addTo(map);
     }
 
