@@ -1,2 +1,7 @@
+# Core LED control
 rpi_ws281x
+RPi.GPIO
+
+# Web UI
 streamlit
+streamlit-autorefresh
