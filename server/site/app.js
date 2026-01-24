@@ -138,7 +138,7 @@ function popupHtml(name, key, seq) {
 /* ------------------------------
    Load & render points
 -------------------------------- */
-loadJson("data.min.json")
+loadJson("data.rich.json")
   .then(points => {
     for (const p of points) {
       if (typeof p.lat !== "number" || typeof p.lon !== "number") continue;
