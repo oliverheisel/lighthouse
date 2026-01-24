@@ -20,7 +20,6 @@ function getUrlParam(name) {
 function normalizeTargetUrl(raw) {
   if (!raw) return "";
   let s = String(raw).trim();
-  // Keep as-is if user wants to enter path too, but ensure no trailing slashes
   return s.replace(/\/+$/, "");
 }
 
@@ -117,15 +116,41 @@ function makeKey(p) {
   );
 }
 
-function popupHtml(name, key, seq) {
+function sectorSummary(sectors) {
+  const s = Array.isArray(sectors) ? sectors : [];
+  if (!s.length) return "";
+  // sectors entries are compact: {ss,se,c,q,p,ch}
+  const parts = s.slice(0, 5).map(x => {
+    const ss = x.ss ?? "";
+    const se = x.se ?? "";
+    const c = (x.c || "").toLowerCase();
+    return `${c || "?"} ${ss}–${se}°`;
+  });
+  return parts.join("<br/>");
+}
+
+function popupHtml(p) {
+  const name = p.name || "Unnamed";
+  const key = makeKey(p);
+  const seq = p.sequence || "";
+
   const base = getBaseUrl();
   const url = base ? `${base}/?id=${key}` : `?id=${key}`;
 
+  const mainPeriod = (p.main_period !== null && p.main_period !== undefined && p.main_period !== "")
+    ? `${p.main_period} s`
+    : "";
+
+  const mainChar = p.main_character || "";
+  const secHtml = sectorSummary(p.sectors);
+
   return `
-    <div class="popup">
+    <div class="popup" style="min-width:220px">
       <div><b>${name}</b> | <span>${key}</span></div>
-      <div>Seq: ${seq}</div>
-      <div>
+      ${seq ? `<div>Seq: ${seq}</div>` : ""}
+      ${(mainChar || mainPeriod) ? `<div>Main: ${mainChar} ${mainPeriod}</div>` : ""}
+      ${secHtml ? `<div style="margin-top:6px"><b>Sectors</b><br/>${secHtml}</div>` : ""}
+      <div style="margin-top:8px">
         Link:
         <a href="${url}" target="_blank" rel="noopener noreferrer">
           ${url}
@@ -136,7 +161,7 @@ function popupHtml(name, key, seq) {
 }
 
 /* ------------------------------
-   Load & render points
+   Load & render points (RICH)
 -------------------------------- */
 loadJson("data.rich.json")
   .then(points => {
@@ -145,8 +170,6 @@ loadJson("data.rich.json")
 
       const col = colorHex(p.color);
       const name = p.name || "Unnamed";
-      const seq = p.sequence || "";
-      const key = makeKey(p);
 
       const marker = L.circleMarker([p.lat, p.lon], {
         radius: 5,
@@ -160,8 +183,9 @@ loadJson("data.rich.json")
 
       marker.bindPopup("");
 
+      // Rebuild popup HTML each time it opens (so URL always matches input)
       marker.on("popupopen", () => {
-        marker.setPopupContent(popupHtml(name, key, seq));
+        marker.setPopupContent(popupHtml(p));
       });
     }
   })
