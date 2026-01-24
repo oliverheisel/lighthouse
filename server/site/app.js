@@ -24,6 +24,34 @@ function normalizeTargetUrl(raw) {
 }
 
 /* ------------------------------
+   Encode cmd payload (Base64URL)
+-------------------------------- */
+function base64UrlEncodeString(str) {
+  const b64 = btoa(unescape(encodeURIComponent(str)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function buildCmdPayload(p) {
+  // Keep it compact but complete enough for Streamlit
+  return {
+    id: makeKey(p),
+    // keep a few nice-to-have fields
+    name: p.name || "",
+    color: p.color || "",
+    sequence: p.sequence || "",
+    main_period: p.main_period ?? null,
+    main_character: p.main_character || "",
+    // sectors already compact: {ss,se,c,q,p,ch}
+    sectors: Array.isArray(p.sectors) ? p.sectors.slice(0, 5) : []
+  };
+}
+
+function buildCmdParam(p) {
+  const payload = buildCmdPayload(p);
+  return base64UrlEncodeString(JSON.stringify(payload));
+}
+
+/* ------------------------------
    Link base selector (bottom-left)
 -------------------------------- */
 const LinkControl = L.Control.extend({
@@ -116,44 +144,30 @@ function makeKey(p) {
   );
 }
 
-function sectorSummary(sectors) {
-  const s = Array.isArray(sectors) ? sectors : [];
-  if (!s.length) return "";
-  // sectors entries are compact: {ss,se,c,q,p,ch}
-  const parts = s.slice(0, 5).map(x => {
-    const ss = x.ss ?? "";
-    const se = x.se ?? "";
-    const c = (x.c || "").toLowerCase();
-    return `${c || "?"} ${ss}–${se}°`;
-  });
-  return parts.join("<br/>");
-}
-
+/* ------------------------------
+   Popup (simple: name, id, seq, link)
+-------------------------------- */
 function popupHtml(p) {
   const name = p.name || "Unnamed";
   const key = makeKey(p);
   const seq = p.sequence || "";
 
   const base = getBaseUrl();
-  const url = base ? `${base}/?id=${key}` : `?id=${key}`;
 
-  const mainPeriod = (p.main_period !== null && p.main_period !== undefined && p.main_period !== "")
-    ? `${p.main_period} s`
-    : "";
+  // Put all info in cmd param (Base64URL JSON)
+  const cmd = buildCmdParam(p);
 
-  const mainChar = p.main_character || "";
-  const secHtml = sectorSummary(p.sectors);
+  // Link back to Streamlit with cmd
+  const url = base ? `${base}/?cmd=${cmd}` : `?cmd=${cmd}`;
 
   return `
     <div class="popup" style="min-width:220px">
       <div><b>${name}</b> | <span>${key}</span></div>
       ${seq ? `<div>Seq: ${seq}</div>` : ""}
-      ${(mainChar || mainPeriod) ? `<div>Main: ${mainChar} ${mainPeriod}</div>` : ""}
-      ${secHtml ? `<div style="margin-top:6px"><b>Sectors</b><br/>${secHtml}</div>` : ""}
       <div style="margin-top:8px">
         Link:
         <a href="${url}" target="_blank" rel="noopener noreferrer">
-          ${url}
+          Link to your lighthouse
         </a>
       </div>
     </div>
@@ -183,7 +197,6 @@ loadJson("data.rich.json")
 
       marker.bindPopup("");
 
-      // Rebuild popup HTML each time it opens (so URL always matches input)
       marker.on("popupopen", () => {
         marker.setPopupContent(popupHtml(p));
       });
