@@ -32,16 +32,13 @@ function base64UrlEncodeString(str) {
 }
 
 function buildCmdPayload(p) {
-  // Keep it compact but complete enough for Streamlit
   return {
     id: makeKey(p),
-    // keep a few nice-to-have fields
     name: p.name || "",
     color: p.color || "",
     sequence: p.sequence || "",
     main_period: p.main_period ?? null,
     main_character: p.main_character || "",
-    // sectors already compact: {ss,se,c,q,p,ch}
     sectors: Array.isArray(p.sectors) ? p.sectors.slice(0, 5) : []
   };
 }
@@ -153,11 +150,7 @@ function popupHtml(p) {
   const seq = p.sequence || "";
 
   const base = getBaseUrl();
-
-  // Put all info in cmd param (Base64URL JSON)
   const cmd = buildCmdParam(p);
-
-  // Link back to Streamlit with cmd
   const url = base ? `${base}/?cmd=${cmd}` : `?cmd=${cmd}`;
 
   return `
@@ -166,7 +159,7 @@ function popupHtml(p) {
       ${seq ? `<div>Seq: ${seq}</div>` : ""}
       <div style="margin-top:8px">
         Link:
-        <a href="${url}" target="_blank" rel="noopener noreferrer">
+        <a href="${url}" target="_self">
           Link to your lighthouse
         </a>
       </div>
